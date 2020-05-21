@@ -10,7 +10,7 @@ import Gloria: onevent!, render!, update!
 using Gloria: Gloria, Window, AbstractObject, Event, Layer, Scene, iskey
 using Gloria.Shapes: Vertex, Point, circle, Polygon, intersects
 
-include("SmoothStep.jl")
+#include("SmoothStep.jl")
 
 global t_last = 0.0
 
