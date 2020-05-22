@@ -10,7 +10,7 @@ import Gloria: onevent!, render!, update!
 using Gloria: Gloria, Window, AbstractObject, Event, Layer, Scene, iskey
 using Gloria.Shapes: Vertex, Point, circle, Polygon, intersects
 
-#include("SmoothStep.jl")
+include("SmoothStep.jl")
 
 global t_last = 0.0
 
@@ -19,7 +19,7 @@ const width, height = 1600, 900
 function attactor(du, u, p, t)
     α, β = p
     n = length(u.nodes)
-    return for k in 1:n
+    for k in 1:n
         du.nodes[k] = zero(du.nodes[k])
         for j in 1:n
             if (k == j)
@@ -143,7 +143,7 @@ const world = World(
 
 
 function Gloria.update!(world::World, ::Gloria.AbstractLayer, t, dt)
-    return if !controls.pause
+     if !controls.pause
         if (world.xoff != 0) || (world.yoff != 0) #mouse vector exists
             u = world.Integ.u
             u.nodes[1][3:4] .+= [world.xoff, world.yoff]
