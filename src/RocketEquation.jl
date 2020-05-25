@@ -6,6 +6,8 @@ using StaticArrays
 using LinearAlgebra
 using MultiScaleArrays
 using Logging
+using TickTock
+
 
 import Gloria: onevent!, render!, update!
 using Gloria: Gloria, Window, AbstractObject, Event, Layer, Scene, iskey
@@ -14,6 +16,8 @@ using Gloria.Shapes: Vertex, Point, circle, Polygon, intersects
 #include("SmoothStep.jl")
 
 global t_last = 0.0
+global u_plot = []
+global t_plot = []
 
 const width, height = 1600, 900
 
@@ -55,12 +59,11 @@ Newton = construct(
     PhysicsLaw,
     [
         Thingy([-700.0, -350.0, 0.0, 0.0]),
-        Thingy([700.0, 350.0, -0.00, 0.0]),#,
-        Thingy([-600.,15.,0.,0.10])#,
-        #Thingy([200.,-200.,5.,-0.50])
-    ],
+        Thingy([700.0, 350.0, -0.00, 0.0]),
+        Thingy([-600.,15.,0.,0.10]),
+        Thingy([200.,-200.,5.,-0.50])
+    ][1:4],
 )
-#TODO: Insert index for tracking comparisions
 
 parameters = [1e-4, 0.00009]
 
@@ -71,7 +74,18 @@ function condition(out, u, t, integrator)
         for l in (k+1):n
             i += 1
             out[i] = sum(abs2, u.nodes[k][1:2] .- u.nodes[l][1:2]) - 10000
+            #if out[i] < 1e-3
+            #    println(u.nodes[k][1:2] .- u.nodes[l][1:2], u.nodes[k][1:2], u.nodes[l][1:2])
+            #    println(t,":", k,":", l)
+            #end
+            if k==1 && l==3
+                global u_plot
+                global t_plot
 
+                append!(u_plot,norm(u.nodes[k][1:2] .- u.nodes[l][1:2]))
+                append!(t_plot,t)
+
+            end
         end
     end
 
@@ -89,17 +103,23 @@ function affect!(integrator, idx)
                 v₁ = u.nodes[k][3:4]
                 x₂ = u.nodes[l][1:2]
                 v₂ = u.nodes[l][3:4]
-                # https://stackoverflow.com/a/35212639
-                v₁ = (
-                    v₁ -
-                    2 / (1 + 1) * (dot(v₁ - v₂, x₁ - x₂) / sum(abs2, x₁ - x₂) * (x₁ - x₂))
-                )
-                v₂ =
-                    -(
-                        v₂ -
-                        2 / (1 + 1) *
-                        (dot(v₂ - v₁, x₂ - x₁) / sum(abs2, x₂ - x₁) * (x₂ - x₁))
+
+                if norm(v₁-v₂) > 1e-1
+                    # https://stackoverflow.com/a/35212639
+                    v₁ = (
+                        v₁ - (dot(v₁-v₂, x₁-x₂) / sum(abs2, x₁-x₂) * (x₁-x₂))
                     )
+                    v₂ =
+                        -(
+                            v₂ -
+                            (dot(v₂-v₁, x₂-x₁) / sum(abs2, x₂-x₁) * (x₂-x₁))
+                        )
+                else
+                    prinlt("Triggered")
+                    m = (v₁+v₂)/2
+                    v₁ = m
+                    v₂ = m
+                end
 
                 #println("Collision handeled.")
 
@@ -162,8 +182,8 @@ function Gloria.update!(world::World, ::Gloria.AbstractLayer, t, dt)
             world.xoff = 0.0
             world.yoff = 0.0
         end
-        #println(dt,"s")
-        step!(world.Integ, dt*1e-8)
+        println(dt,"s")
+        step!(world.Integ, dt/100)
     end
 end
 
@@ -199,14 +219,16 @@ function Gloria.render!(L::Layer, obj::World, frame, fps)
     Gloria.clear!(window)
     Gloria.setcolor!(window, 255, 255, 255, 255)
     i = 3
-    avg = [0, 0]
-    for x in obj.Integ.u.nodes
-        avg += x
-    end
+    avg = [0.0, 0.0]
+    #for x in obj.Integ.u.nodes
+    #    avg .+= x[1:2]
+    #end
     avg .= avg ./ length(obj.Integ.u.nodes)
     for x in obj.Integ.u.nodes
         i += 1
-        Gloria.render!(L, circle(Vertex(0.0, 0.0), 50; samples = i), 800 + x[1] -avg[1], 450 + x[2] - avg[2])
+        Gloria.render!(L,
+            circle(Vertex(0.0, 0.0), 50; samples = i),
+            800 + x[1] -avg[1], 450 + x[2] - avg[2])
     end
     return Gloria.present!(window)
 end
