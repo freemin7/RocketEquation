@@ -16,7 +16,12 @@ using Gloria.Shapes: Vertex, Point, circle, Polygon, intersects
 #include("SmoothStep.jl")
 
 global t_last = 0.0
-global u_plot = []
+global u_plot1 = []
+global u_plot2 = []
+global u_plot3 = []
+global u_plot4 = []
+global u_plot5 = []
+global u_plot6 = []
 global t_plot = []
 
 const width, height = 1600, 900
@@ -33,7 +38,7 @@ function attactor(du, u, p, t)
                 du.nodes[k] .+=
                     [u.nodes[k][3], u.nodes[k][4], -β * u.nodes[k][3], -β * u.nodes[k][4]]
             else
-                du.nodes[k][3:4] .+= α * (u.nodes[j][1:2] - u.nodes[k][1:2])
+                du.nodes[k][3:4] .+=  α * (u.nodes[j][1:2] - u.nodes[k][1:2])
             end
         end
     end
@@ -58,9 +63,9 @@ end
 Newton = construct(
     PhysicsLaw,
     [
-        Thingy([-700.0, -350.0, 0.0, 0.0]),
-        Thingy([700.0, 350.0, -0.00, 0.0]),
-        Thingy([-600.,15.,0.,0.10]),
+        Thingy([-700.0, -350.0, 0.0, -1.9]),
+        Thingy([700.0, 350.0, -0.00, 1.0]),
+        Thingy([-600.,15.,10.,0.10]),
         Thingy([200.,-200.,5.,-0.50])
     ][1:4],
 )
@@ -73,20 +78,22 @@ function condition(out, u, t, integrator)
     for k in 1:n
         for l in (k+1):n
             i += 1
-            out[i] = sum(abs2, u.nodes[k][1:2] .- u.nodes[l][1:2]) - 10000
+            out[i] = sqrt(sum(abs2, u.nodes[k][1:2] .- u.nodes[l][1:2])) - 100
             #if out[i] < 1e-3
             #    println(u.nodes[k][1:2] .- u.nodes[l][1:2], u.nodes[k][1:2], u.nodes[l][1:2])
             #    println(t,":", k,":", l)
             #end
-            if k==1 && l==3
-                global u_plot
-                global t_plot
-
-                append!(u_plot,norm(u.nodes[k][1:2] .- u.nodes[l][1:2]))
-                append!(t_plot,t)
-
-            end
         end
+        global u_plot
+        global t_plot
+
+        append!(u_plot1,out[1])
+        append!(u_plot2,out[2])
+        append!(u_plot3,out[3])
+        append!(u_plot4,out[4])
+        append!(u_plot5,out[5])
+        append!(u_plot6,out[6])
+        append!(t_plot,t)
     end
 
 end
@@ -104,7 +111,6 @@ function affect!(integrator, idx)
                 x₂ = u.nodes[l][1:2]
                 v₂ = u.nodes[l][3:4]
 
-                if norm(v₁-v₂) > 1e-1
                     # https://stackoverflow.com/a/35212639
                     v₁ = (
                         v₁ - (dot(v₁-v₂, x₁-x₂) / sum(abs2, x₁-x₂) * (x₁-x₂))
@@ -114,12 +120,6 @@ function affect!(integrator, idx)
                             v₂ -
                             (dot(v₂-v₁, x₂-x₁) / sum(abs2, x₂-x₁) * (x₂-x₁))
                         )
-                else
-                    prinlt("Triggered")
-                    m = (v₁+v₂)/2
-                    v₁ = m
-                    v₂ = m
-                end
 
                 #println("Collision handeled.")
 
@@ -183,7 +183,7 @@ function Gloria.update!(world::World, ::Gloria.AbstractLayer, t, dt)
             world.yoff = 0.0
         end
         println(dt,"s")
-        step!(world.Integ, dt/100)
+        step!(world.Integ, dt*80, true)
     end
 end
 
@@ -220,9 +220,9 @@ function Gloria.render!(L::Layer, obj::World, frame, fps)
     Gloria.setcolor!(window, 255, 255, 255, 255)
     i = 3
     avg = [0.0, 0.0]
-    #for x in obj.Integ.u.nodes
-    #    avg .+= x[1:2]
-    #end
+    for x in obj.Integ.u.nodes
+        avg .+= x[1:2]
+    end
     avg .= avg ./ length(obj.Integ.u.nodes)
     for x in obj.Integ.u.nodes
         i += 1
